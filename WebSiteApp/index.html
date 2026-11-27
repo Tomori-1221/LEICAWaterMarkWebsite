@@ -1,0 +1,2049 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>照片水印添加</title>
+<style>
+  @font-face {
+    font-family: "Outfit";
+    src: url("Font/Outfit-Variable.ttf") format("truetype");
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+  }
+
+  :root {
+    --bg: #DFDFDF;
+    --bg-deep: #D0D0D0;
+    --surface: #F8F8F8;
+    --surface-2: #EFEFEF;
+    --ink: #1B1B1B;
+    --ink-2: #454545;
+    --muted: #5F5F5F;
+    --line: #C9C9C9;
+    --line-2: #B8B8B8;
+    --primary: #FF316C;
+    --primary-2: #D91952;
+    --primary-3: #A60D3B;
+    --primary-soft: #FFE3EA;
+    --primary-text: #C9114A;
+    --accent: #FF316C;
+    --warn: #7A4A11;
+    --radius-xl: 24px;
+    --radius-lg: 18px;
+    --radius-md: 14px;
+    --font: "Outfit", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    color-scheme: light;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { min-height: 100%; }
+
+  body {
+    margin: 0;
+    color: var(--ink);
+    font-family: var(--font);
+    font-size: 14px;
+    line-height: 1.5;
+    background-color: var(--bg);
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(0, 0, 0, 0.10) 1px, transparent 1.1px),
+      radial-gradient(900px 520px at 88% -12%, rgba(255, 49, 108, 0.10), transparent 70%),
+      radial-gradient(720px 460px at -5% 0%, rgba(255, 255, 255, 0.55), transparent 70%);
+    background-size: 18px 18px, auto, auto;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button, input, select { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  svg { display: block; }
+
+  ::selection { background: rgba(255, 49, 108, 0.18); }
+
+  :where(button, input, select, .thumb, .dropzone, .empty-pick):focus-visible {
+    outline: 3px solid rgba(255, 49, 108, 0.35);
+    outline-offset: 2px;
+  }
+
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    height: 76px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 18px;
+    padding: 0 22px;
+    background: var(--bg);
+    border-bottom: 2px solid var(--line);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset, 0 8px 20px rgba(0, 0, 0, 0.06);
+  }
+
+  .brand { display: flex; align-items: center; gap: 13px; min-width: 0; }
+
+  .logo {
+    width: 46px;
+    height: 46px;
+    flex: none;
+    border-radius: 15px;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    background: linear-gradient(160deg, #FF7A9C 0%, #FF316C 55%, #D91952 100%);
+    border: 2px solid #D91952;
+    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.45), 0 3px 0 #A60D3B, 0 9px 18px rgba(255, 49, 108, 0.24);
+  }
+
+  .brand-text { min-width: 0; }
+
+  .brand h1 {
+    margin: 0;
+    font-size: 19px;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    white-space: nowrap;
+  }
+
+  .brand .sub {
+    margin: 1px 0 0;
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+
+
+
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(370px, 424px) minmax(0, 1fr);
+    gap: 18px;
+    padding: 18px 22px 22px;
+    height: calc(100vh - 76px);
+    height: calc(100dvh - 76px);
+  }
+
+  .side { display: flex; flex-direction: column; gap: 14px; min-height: 0; overflow: hidden; }
+
+  .side-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 1px 4px 2px 1px;
+  }
+
+  .side-scroll::-webkit-scrollbar { width: 8px; }
+  .side-scroll::-webkit-scrollbar-thumb { background: #C4C4C4; border-radius: 99px; border: 2px solid var(--bg); }
+
+  .card {
+    background: var(--surface);
+    border: 2px solid var(--line);
+    border-radius: var(--radius-xl);
+    padding: 17px;
+    box-shadow: inset 0 1px 0 #fff, 0 2px 0 rgba(0, 0, 0, 0.16), 0 16px 32px rgba(0, 0, 0, 0.07);
+  }
+
+  .section-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+
+  .step {
+    width: 28px;
+    height: 23px;
+    flex: none;
+    display: grid;
+    place-items: center;
+    border-radius: 7px;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: #fff;
+    background: linear-gradient(180deg, #E31C56, #C9114A);
+    border: 1px solid #A60D3B;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 2px 0 #A60D3B;
+  }
+
+  .section-head h2 { margin: 0; font-size: 15px; font-weight: 650; letter-spacing: -0.01em; }
+
+  .section-note { margin-left: auto; font-size: 12px; color: var(--muted); white-space: nowrap; }
+
+  .link-btn {
+    margin-left: auto;
+    padding: 2px 0;
+    border: 0;
+    background: none;
+    color: var(--primary-text);
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 4px;
+  }
+
+  .link-btn:hover { text-decoration: underline; }
+  .link-btn:disabled { color: #B0B0B0; cursor: default; text-decoration: none; }
+
+  .dropzone {
+    position: relative;
+    border: 2px dashed var(--line-2);
+    border-radius: 18px;
+    padding: 24px 18px 20px;
+    text-align: center;
+    background: linear-gradient(180deg, #FFFFFF, #F2F2F2);
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.06);
+    transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.18s, background 0.18s;
+  }
+
+  .dropzone:hover,
+  .dropzone.dragover {
+    border-color: #FF7A9C;
+    background: linear-gradient(180deg, #FFF4F7, #FFE9EF);
+    transform: translateY(-2px);
+  }
+
+  .dropzone:active { transform: translateY(0) scale(0.99); }
+
+  .drop-icon {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 12px;
+    border-radius: 18px;
+    display: grid;
+    place-items: center;
+    color: var(--primary);
+    background: linear-gradient(180deg, #FFFFFF, #F0F0F0);
+    border: 2px solid var(--line);
+    box-shadow: inset 0 2px 0 #fff, 0 3px 0 rgba(0, 0, 0, 0.17);
+  }
+
+  .dz-title { margin: 0 0 3px; font-size: 14px; font-weight: 600; }
+  .dz-sub { margin: 0; font-size: 12px; color: var(--muted); }
+
+  .dz-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 12px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    border: 1px solid #CBCBCB;
+    background: #FFFFFF;
+    color: var(--ink-2);
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    box-shadow: inset 0 1px 0 #fff;
+  }
+
+  .warn {
+    margin-top: 12px;
+    padding: 10px 12px;
+    border: 2px solid #F0C584;
+    border-radius: 14px;
+    background: #FFF5E4;
+    color: var(--warn);
+    font-size: 12px;
+    line-height: 1.6;
+    box-shadow: inset 0 1px 0 #fff, 0 2px 0 #EAD3AF;
+  }
+
+  .warn strong { font-weight: 650; }
+  .warn .link-btn { color: #A25A0C; margin-left: 6px; }
+
+  .thumbs { display: flex; gap: 10px; overflow-x: auto; margin-top: 13px; padding: 2px 2px 4px; }
+  .thumbs::-webkit-scrollbar { height: 6px; }
+  .thumbs::-webkit-scrollbar-thumb { background: #C4C4C4; border-radius: 99px; }
+
+  .thumb {
+    position: relative;
+    flex: 0 0 auto;
+    width: 68px;
+    height: 68px;
+    border: 2px solid var(--line);
+    border-radius: 14px;
+    overflow: hidden;
+    background: #fff;
+    box-shadow: inset 0 1px 0 #fff, 0 2px 0 rgba(0, 0, 0, 0.13);
+    transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.18s, border-color 0.18s;
+  }
+
+  .thumb:hover { transform: translateY(-2px); }
+
+  .thumb.active {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(255, 49, 108, 0.16), 0 3px 0 rgba(217, 25, 82, 0.3);
+    transform: translateY(-1px);
+  }
+
+  .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  .thumb-idx {
+    position: absolute;
+    left: 4px;
+    bottom: 4px;
+    min-width: 15px;
+    padding: 0 4px;
+    font-size: 9.5px;
+    font-weight: 600;
+    line-height: 14px;
+    text-align: center;
+    color: #fff;
+    background: rgba(20, 20, 20, 0.66);
+    border-radius: 5px;
+    pointer-events: none;
+  }
+
+  .thumb-remove {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    width: 19px;
+    height: 19px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(20, 20, 20, 0.68);
+    color: #fff;
+    font-size: 13px;
+    line-height: 19px;
+    text-align: center;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  }
+
+  .thumb-remove:hover { background: #D91952; }
+
+  .field { display: flex; flex-direction: column; gap: 7px; margin-bottom: 13px; }
+  .field:last-child { margin-bottom: 0; }
+
+  .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .label-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 22px; }
+
+  label, .field-label { font-size: 12px; font-weight: 550; color: var(--ink-2); letter-spacing: 0.01em; }
+
+  .hint { font-size: 11px; color: var(--muted); font-weight: 400; }
+  .label-row label .hint { margin-left: 6px; }
+
+  .format-note { margin: 0 0 2px; font-size: 11px; line-height: 1.6; color: var(--muted); }
+
+  .value { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  input[type="text"],
+  input[type="date"],
+  select {
+    width: 100%;
+    height: 44px;
+    padding: 0 12px;
+    border: 2px solid var(--line);
+    border-radius: var(--radius-md);
+    background: linear-gradient(180deg, #FFFFFF, #F8F8F8);
+    box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.07);
+    color: var(--ink);
+    font-size: 13.5px;
+    font-weight: 450;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  input[type="text"]:focus,
+  input[type="date"]:focus,
+  select:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(255, 49, 108, 0.16), inset 0 2px 3px rgba(0, 0, 0, 0.04);
+  }
+
+  input[type="text"]:disabled,
+  input[type="date"]:disabled { opacity: 0.5; }
+  input::placeholder { color: #A3A3A3; }
+
+  select {
+    appearance: none;
+    -webkit-appearance: none;
+    padding-right: 38px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%237A7268' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 13px center;
+  }
+
+  input[type="date"]::-webkit-calendar-picker-indicator { opacity: 0.55; cursor: pointer; }
+
+  .color-row { display: flex; align-items: center; gap: 9px; }
+
+  input[type="color"] {
+    width: 54px;
+    height: 40px;
+    padding: 3px;
+    border: 2px solid var(--line);
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.08), 0 2px 0 rgba(0, 0, 0, 0.13);
+    cursor: pointer;
+  }
+
+  .color-value {
+    flex: 1;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    border: 2px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface-2);
+    box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.06);
+    font-size: 11.5px;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-2);
+  }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 28px;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  input[type="range"]::-webkit-slider-runnable-track {
+    height: 10px;
+    border-radius: 99px;
+    border: 1px solid #CFCFCF;
+    background: linear-gradient(180deg, #E7E7E7, #F4F4F4);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.22);
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 26px;
+    height: 26px;
+    margin-top: -9px;
+    border-radius: 50%;
+    border: 2px solid #ABABAB;
+    background: radial-gradient(circle at 35% 28%, #FFFFFF 0%, #F3F3F3 58%, #CFCFCF 100%);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.26), inset 0 2px 0 #fff;
+    transition: transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  input[type="range"]:active::-webkit-slider-thumb { transform: scale(0.9); }
+
+  input[type="range"]::-moz-range-track {
+    height: 10px;
+    border-radius: 99px;
+    border: 1px solid #CFCFCF;
+    background: linear-gradient(180deg, #E7E7E7, #F4F4F4);
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid #ABABAB;
+    background: radial-gradient(circle at 35% 28%, #FFFFFF 0%, #F3F3F3 58%, #CFCFCF 100%);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.26);
+  }
+
+  .switch { position: relative; width: 50px; height: 28px; flex: none; display: inline-block; cursor: pointer; }
+  .switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+
+  .switch span {
+    position: absolute;
+    inset: 0;
+    border-radius: 99px;
+    border: 2px solid var(--line-2);
+    background: linear-gradient(180deg, #E7E7E7, #F4F4F4);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.18);
+    transition: background 0.18s, border-color 0.18s;
+  }
+
+  .switch span::after {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 1px solid #ABABAB;
+    background: radial-gradient(circle at 35% 28%, #FFFFFF 0%, #F3F3F3 62%, #CFCFCF 100%);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.22), inset 0 1px 0 #fff;
+    transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .switch input:checked + span {
+    background: linear-gradient(180deg, #FF5C86, #FF316C);
+    border-color: #D91952;
+    box-shadow: inset 0 2px 4px rgba(120, 0, 32, 0.22);
+  }
+
+  .switch input:checked + span::after { transform: translateX(22px); border-color: #FFD3DD; }
+
+  .seg {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    padding: 4px;
+    border: 2px solid var(--line);
+    border-radius: var(--radius-md);
+    background: linear-gradient(180deg, #E7E7E7, #EFEFEF);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.16);
+  }
+
+  .seg-btn {
+    height: 34px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 550;
+    transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+  }
+
+  .seg-btn:hover { color: var(--ink-2); }
+
+  .seg-btn.active {
+    background: #FFFFFF;
+    color: var(--primary-text);
+    box-shadow: 0 1px 0 #fff, 0 2px 5px rgba(0, 0, 0, 0.16);
+  }
+
+  .actions {
+    flex: none;
+    display: grid;
+    grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+    gap: 10px;
+    padding-top: 2px;
+  }
+
+  .btn {
+    min-height: 48px;
+    padding: 0 16px;
+    border-radius: 16px;
+    border: 2px solid transparent;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    font-size: 13.5px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.22s, background 0.18s, border-color 0.18s;
+    will-change: transform;
+  }
+
+  .btn svg { flex: none; }
+
+  .btn-primary {
+    color: #1B1B1B;
+    background: linear-gradient(180deg, #FF7A9C 0%, #FF316C 55%, #EE1F59 100%);
+    border-color: #C9114A;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 4px 0 #C9114A, 0 12px 22px rgba(255, 49, 108, 0.26);
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.18);
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 5px 0 #C9114A, 0 16px 26px rgba(255, 49, 108, 0.28);
+  }
+
+  .btn-primary:active:not(:disabled) {
+    transform: translateY(3px) scale(0.985);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32), 0 1px 0 #C9114A, 0 6px 12px rgba(255, 49, 108, 0.2);
+  }
+
+  .btn-ghost {
+    color: var(--ink);
+    background: linear-gradient(180deg, #FFFFFF, #F1F1F1);
+    border-color: var(--line-2);
+    box-shadow: inset 0 1px 0 #fff, 0 3px 0 #C4C4C4, 0 10px 18px rgba(0, 0, 0, 0.08);
+  }
+
+  .btn-ghost:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: inset 0 1px 0 #fff, 0 4px 0 #C4C4C4, 0 14px 22px rgba(0, 0, 0, 0.1);
+  }
+
+  .btn-ghost:active:not(:disabled) {
+    transform: translateY(2px);
+    box-shadow: inset 0 1px 0 #fff, 0 1px 0 #C4C4C4, 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 2px 0 rgba(120, 100, 80, 0.16); }
+
+  .btn-sm { min-height: 40px; border-radius: 13px; padding: 0 14px; font-size: 12.5px; }
+
+  .preview-card {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden;
+    border: 2px solid var(--line);
+    border-radius: var(--radius-xl);
+    background: var(--surface);
+    box-shadow: inset 0 1px 0 #fff, 0 2px 0 rgba(0, 0, 0, 0.16), 0 22px 44px rgba(0, 0, 0, 0.09);
+  }
+
+  .preview-head {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 13px 18px;
+    border-bottom: 2px solid var(--line);
+    background: linear-gradient(180deg, #FFFFFF, #F4F4F4);
+  }
+
+  .preview-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .preview-title h2 { margin: 0; font-size: 15px; font-weight: 650; letter-spacing: -0.01em; white-space: nowrap; }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    height: 24px;
+    padding: 0 9px;
+    border-radius: 999px;
+    border: 1.5px solid var(--line);
+    background: #FFFFFF;
+    box-shadow: inset 0 1px 0 #fff, 0 1px 0 rgba(0, 0, 0, 0.13);
+    font-size: 10px;
+    font-weight: 550;
+    letter-spacing: 0.03em;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .meta { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  .preview-body {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    display: flex;
+    padding: 22px;
+    background-color: #D8D8D8;
+    background-image: radial-gradient(circle at 1px 1px, rgba(0, 0, 0, 0.13) 1px, transparent 1.1px);
+    background-size: 16px 16px;
+  }
+
+  .preview-body::-webkit-scrollbar { width: 9px; height: 9px; }
+  .preview-body::-webkit-scrollbar-thumb { background: #C4C4C4; border-radius: 99px; border: 2px solid #D8D8D8; }
+
+  .preview-inner { margin: auto; width: 100%; max-width: 800px; }
+
+  #previewCanvas {
+    display: block;
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: calc(100vh - 254px);
+    max-height: calc(100dvh - 254px);
+    margin: 0 auto;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.24), 0 2px 0 rgba(0, 0, 0, 0.20), 0 22px 42px rgba(0, 0, 0, 0.16);
+  }
+
+  .empty {
+    border: 2px dashed var(--line-2);
+    border-radius: 20px;
+    padding: 48px 24px;
+    text-align: center;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.6));
+    box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.06);
+    color: var(--muted);
+  }
+
+  .empty-icon {
+    width: 66px;
+    height: 66px;
+    margin: 0 auto 16px;
+    border-radius: 20px;
+    display: grid;
+    place-items: center;
+    color: var(--primary);
+    background: linear-gradient(180deg, #fff, #F0F0F0);
+    border: 2px solid var(--line);
+    box-shadow: inset 0 2px 0 #fff, 0 4px 0 rgba(0, 0, 0, 0.14);
+  }
+
+  .empty-title { margin: 0 0 6px; font-size: 15px; font-weight: 600; color: var(--ink); }
+  .empty-sub { margin: 0 0 18px; font-size: 12px; line-height: 1.75; }
+
+  .empty-pick { display: inline-flex; }
+
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: 24px;
+    transform: translateX(-50%);
+    z-index: 90;
+    max-width: calc(100vw - 32px);
+    padding: 10px 16px;
+    border: 2px solid #3A3A3A;
+    border-radius: 14px;
+    background: #1F1F1F;
+    color: #FFFFFF;
+    font-size: 13px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 14px 28px rgba(0, 0, 0, 0.32);
+  }
+
+  [hidden] { display: none !important; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .card, .preview-card { animation: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+    .preview-card { animation-delay: 0.06s; }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(10px) scale(0.995); }
+      to { opacity: 1; transform: none; }
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+  }
+
+  @media (max-width: 900px) {
+    .layout {
+      grid-template-columns: minmax(0, 1fr);
+      height: auto;
+      padding: 14px;
+      gap: 14px;
+    }
+
+    .side { overflow: visible; min-width: 0; }
+    .side-scroll { overflow: visible; }
+    .preview-card { min-height: 0; }
+    .preview-head { flex-wrap: wrap; }
+    .meta { white-space: normal; }
+    .topbar { padding: 0 14px; }
+    #previewCanvas { max-height: 72vh; }
+  }
+
+  @media (max-width: 560px) {
+    .field-grid { grid-template-columns: 1fr; }
+    .brand h1 { font-size: 17px; }
+    .brand .sub { display: none; }
+    .logo { width: 42px; height: 42px; border-radius: 13px; }
+    .layout { padding: 12px; }
+    .card { padding: 15px; }
+    .actions { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="logo" aria-hidden="true">
+      <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3.2" y="5.2" width="17.6" height="13.6" rx="2.2"></rect>
+        <circle cx="8.7" cy="9.6" r="1.35"></circle>
+        <path d="M4 16.2 8.8 11.6l3.4 3.2 2.6-2.4 4.9 4.2"></path>
+      </svg>
+    </span>
+    <div class="brand-text">
+      <h1>照片水印添加</h1>
+      <p class="sub">Leica-style Watermark Studio</p>
+    </div>
+  </div>
+</header>
+
+<main class="layout">
+  <aside class="side">
+    <div class="side-scroll">
+      <section class="card">
+        <div class="section-head">
+          <span class="step">01</span>
+          <h2>选择照片</h2>
+          <span id="photoCount" class="section-note">未选择</span>
+        </div>
+
+        <div id="dropzone" class="dropzone" role="button" tabindex="0" aria-label="选择或拖入照片">
+          <div class="drop-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 16V4M12 4l-4 4M12 4l4 4"></path>
+              <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"></path>
+            </svg>
+          </div>
+          <p class="dz-title">拖拽照片到这里，或点击选择</p>
+          <p class="dz-sub">JPG / PNG / WebP · 可多选 · 自动读取 EXIF</p>
+          <span class="dz-badge">本地读取，不上传</span>
+        </div>
+        <input id="fileInput" type="file" accept="image/*" multiple hidden>
+
+        <div id="cdnWarn" class="warn" hidden>
+          <strong>EXIF 解析库加载失败</strong>（CDN 不可达或网络受限），已切换为手动填写模式。
+          <button type="button" id="retryExif" class="link-btn">重试加载</button>
+        </div>
+
+        <div id="thumbs" class="thumbs" hidden aria-label="已上传照片列表"></div>
+      </section>
+
+      <section class="card">
+        <div class="section-head">
+          <span class="step">02</span>
+          <h2>水印内容</h2>
+          <button type="button" id="resetBtn" class="link-btn">恢复默认</button>
+        </div>
+
+        <div class="field">
+          <div class="label-row">
+            <label for="modelInput">设备型号</label>
+            <span class="hint">自动填充，可修改</span>
+          </div>
+          <input id="modelInput" type="text" autocomplete="off" placeholder="例如 XIAOMI 18 Pro">
+        </div>
+
+        <div class="field">
+          <div class="label-row">
+            <label for="brandInput">品牌字样</label>
+            <span class="hint">显示在型号右侧，留空隐藏</span>
+          </div>
+          <input id="brandInput" type="text" autocomplete="off" value="LEICA" placeholder="LEICA / ZEISS">
+        </div>
+
+        <div class="field">
+          <div class="label-row">
+            <label for="paramsInput">镜头参数</label>
+            <button type="button" id="reparseBtn" class="link-btn">重新读取 EXIF</button>
+          </div>
+          <input id="paramsInput" type="text" autocomplete="off" placeholder="24mm | f/1.8 | 1/200s | ISO 100">
+        </div>
+
+        <div class="divider" style="height:1px;background:linear-gradient(90deg,transparent,var(--line),transparent);margin:4px 0 14px;"></div>
+
+        <div class="section-head" style="margin-bottom:12px;">
+          <span class="step">03</span>
+          <h2>样式与导出</h2>
+        </div>
+
+        <div class="field">
+          <div class="label-row">
+            <label for="dateInput">拍摄时间</label>
+            <label class="switch" aria-label="显示拍摄时间">
+              <input type="checkbox" id="dateToggle">
+              <span></span>
+            </label>
+          </div>
+          <input id="dateInput" type="date">
+        </div>
+
+        <div class="field">
+          <div class="label-row">
+            <label for="photoShadow">照片阴影<span class="hint">四周柔和投影</span></label>
+            <label class="switch" aria-label="照片阴影开关">
+              <input type="checkbox" id="photoShadow" checked>
+              <span></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="label-row">
+            <label for="fontScale">字号缩放</label>
+            <span id="scaleValue" class="value">1.00×</span>
+          </div>
+          <input id="fontScale" type="range" min="0.6" max="1.6" step="0.05" value="1">
+        </div>
+
+        <div class="field-grid">
+          <div class="field">
+            <label for="textColor">文字颜色</label>
+            <div class="color-row">
+              <input id="textColor" type="color" value="#111111">
+              <span id="textColorHex" class="color-value">#111111</span>
+            </div>
+          </div>
+          <div class="field">
+            <label for="bgColor">背景颜色</label>
+            <div class="color-row">
+              <input id="bgColor" type="color" value="#FFFFFF">
+              <span id="bgColorHex" class="color-value">#FFFFFF</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="separator">参数分隔符</label>
+          <select id="separator">
+            <option value=" | " selected>竖线&nbsp;&nbsp;|</option>
+            <option value=" · ">圆点&nbsp;&nbsp;·</option>
+            <option value=" / ">斜杠&nbsp;&nbsp;/</option>
+            <option value=" ">空格</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <span class="field-label">对齐方式</span>
+          <div id="alignSeg" class="seg" role="group" aria-label="对齐方式">
+            <button type="button" class="seg-btn active" data-align="center">居中</button>
+            <button type="button" class="seg-btn" data-align="left">左对齐</button>
+          </div>
+        </div>
+
+        <div class="field-grid">
+          <div class="field">
+            <label for="exportFormat">导出格式</label>
+            <select id="exportFormat">
+              <option value="jpeg" selected>JPG · 体积小</option>
+              <option value="png">PNG · 无损</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="exportWidth">导出宽度</label>
+            <select id="exportWidth">
+              <option value="1080">1080 px</option>
+              <option value="2000">2000 px</option>
+              <option value="3000" selected>3000 px</option>
+              <option value="4000">4000 px</option>
+            </select>
+          </div>
+        </div>
+        <p class="format-note">JPG 采用 95% 画质，像素尺寸与清晰度不变，体积约为 PNG 的 1/6；需要逐像素无损时可切换 PNG。</p>
+      </section>
+    </div>
+
+    <div class="actions">
+      <button type="button" id="exportBtn" class="btn btn-primary" disabled>
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 3v12M12 15l-4-4M12 15l4-4"></path>
+          <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"></path>
+        </svg>
+        导出当前图片
+      </button>
+      <button type="button" id="exportAllBtn" class="btn btn-ghost" disabled>
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="8" y="8" width="12" height="12" rx="2"></rect>
+          <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"></path>
+        </svg>
+        全部导出
+      </button>
+    </div>
+  </aside>
+
+  <section class="preview-card" aria-label="预览">
+    <div class="preview-head">
+      <div class="preview-title">
+        <span class="step">04</span>
+        <h2>实时预览</h2>
+        <span class="pill">所见即所得</span>
+      </div>
+      <span id="previewMeta" class="meta"></span>
+    </div>
+    <div class="preview-body">
+      <div class="preview-inner">
+        <div id="emptyState" class="empty">
+          <div class="empty-icon">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="4.2" width="18" height="15.6" rx="2"></rect>
+              <circle cx="8.6" cy="9.6" r="1.4"></circle>
+              <path d="M3.6 17.4 9 12.2l4 3.9 3-2.9 4.4 4.2"></path>
+            </svg>
+          </div>
+          <p class="empty-title">还没有照片</p>
+          <p class="empty-sub">上传照片后，这里会实时显示水印效果<br>预览与导出使用同一套高清绘制逻辑</p>
+          <button type="button" id="emptyPick" class="btn btn-ghost btn-sm empty-pick">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 16V4M12 4l-4 4M12 4l4 4"></path>
+              <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"></path>
+            </svg>
+            选择照片
+          </button>
+        </div>
+        <canvas id="previewCanvas" hidden></canvas>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+<script>
+  window.__exifLoadFailed = false;
+  window.handleExifLoadError = function () {
+    window.__exifLoadFailed = true;
+    var warn = document.getElementById('cdnWarn');
+    if (warn) warn.hidden = false;
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/exif-js@2.3.0/exif.min.js"
+        onerror="window.handleExifLoadError()"></script>
+<script>
+(function () {
+  'use strict';
+
+  /* ============================== 常量 ============================== */
+
+  // 水印与界面统一使用本地 Outfit 可变字体，中文回退系统黑体
+  const FONT_STACK = '"Outfit", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif';
+  const CAP_ASCENT = 0.7047; // Outfit 大写/数字墨迹高度（相对字号）
+  const DEFAULT_TEXT_COLOR = '#111111';
+  const DEFAULT_BG_COLOR = '#FFFFFF';
+  const DEFAULT_SEPARATOR = ' | ';
+
+  const EXPORT_FORMATS = {
+    jpeg: { mime: 'image/jpeg', ext: 'jpg', quality: 0.95, label: 'JPG' },
+    png: { mime: 'image/png', ext: 'png', label: 'PNG' }
+  };
+
+  const BRAND_RULES = [
+    { re: /xiaomi|redmi|poco/i, brand: 'XIAOMI' },
+    { re: /huawei/i, brand: 'HUAWEI' },
+    { re: /apple|iphone/i, brand: 'iPhone' },
+    { re: /samsung|galaxy/i, brand: 'SAMSUNG' },
+    { re: /oppo/i, brand: 'OPPO' },
+    { re: /vivo/i, brand: 'vivo' },
+    { re: /honor/i, brand: 'HONOR' },
+    { re: /canon/i, brand: 'Canon' },
+    { re: /nikon/i, brand: 'NIKON' },
+    { re: /sony/i, brand: 'SONY' },
+    { re: /dji/i, brand: 'DJI' }
+  ];
+
+  const BRAND_PREFIX_RE = /^(xiaomi|redmi|poco|huawei|honor|apple|iphone|samsung|galaxy|oppo|vivo|canon|nikon|sony|dji|mi)\b[\s\-_]*/i;
+
+  const state = {
+    entries: [],
+    activeId: null,
+    align: 'center',
+    exporting: false,
+    globalDate: todayStr()
+  };
+
+  const measureCtx = document.createElement('canvas').getContext('2d');
+  let renderTimer = 0;
+  let toastTimer = 0;
+  let fontsPromise = Promise.resolve();
+
+  /* ============================== 工具 ============================== */
+
+  function $(id) { return document.getElementById(id); }
+  function pad2(n) { return n < 10 ? '0' + n : String(n); }
+
+  function todayStr() {
+    const d = new Date();
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+  }
+
+  function sleep(ms) { return new Promise(function (resolve) { setTimeout(resolve, ms); }); }
+
+  function clamp(v, min, max) { return Math.min(max, Math.max(min, v)); }
+
+  function toast(msg) {
+    if (!els.toast) return;
+    els.toast.textContent = msg;
+    els.toast.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { els.toast.hidden = true; }, 2800);
+  }
+
+  // 取有限数字：兼容数组 / 字符串分数 / 有理数对象
+  function toFinite(value) {
+    if (value === null || value === undefined || value === '') return null;
+    if (Array.isArray(value)) value = value[0];
+    if (value && typeof value === 'object' && 'numerator' in value) {
+      const n = Number(value.numerator) / Number(value.denominator);
+      return Number.isFinite(n) ? n : null;
+    }
+    if (typeof value === 'string' && value.indexOf('/') > -1) {
+      const parts = value.split('/');
+      const n = Number(parts[0]) / Number(parts[1]);
+      return Number.isFinite(n) ? n : null;
+    }
+    const num = Number(value);
+    return Number.isFinite(num) ? num : null;
+  }
+
+  function hexToRgb(hex) {
+    let h = String(hex || '').trim().replace('#', '');
+    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+    if (!/^[0-9a-fA-F]{6}$/.test(h)) return null;
+    return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+  }
+
+  // 由“文字颜色 + 背景颜色”推导次级文字颜色，默认值下即参考图的灰阶
+  function mixColor(a, b, t) {
+    const ca = hexToRgb(a);
+    const cb = hexToRgb(b);
+    if (!ca || !cb) return a;
+    const out = ca.map(function (v, i) { return Math.round(v + (cb[i] - v) * t); });
+    return '#' + out.map(function (v) { return pad2(v.toString(16)); }).join('');
+  }
+
+  function formatDateText(iso) { return iso ? String(iso).replace(/-/g, '.') : ''; }
+
+  function fontString(weight, size) {
+    return weight + ' ' + size.toFixed(2) + 'px ' + FONT_STACK;
+  }
+
+  /* ============================== EXIF ============================== */
+
+  // 优先解析文件 ArrayBuffer；失败（PNG/无 EXIF/异常）回退到 exif-js 的 Image 解析
+  async function parseExif(file, imgEl) {
+    const empty = { tags: {}, ok: false };
+    if (!window.EXIF) return empty;
+
+    try {
+      if (file && typeof file.arrayBuffer === 'function') {
+        const buffer = await file.arrayBuffer();
+        const tags = EXIF.readFromBinaryFile(buffer);
+        if (tags && Object.keys(tags).length) return { tags: tags, ok: true };
+      }
+    } catch (err) {
+      // 非 JPEG 或 EXIF 结构异常：继续走图片元素回退
+    }
+
+    if (!imgEl) return empty;
+    return new Promise(function (resolve) {
+      let settled = false;
+      const finish = function (tags) {
+        if (settled) return;
+        settled = true;
+        const ok = !!(tags && Object.keys(tags).length);
+        resolve({ tags: tags || {}, ok: ok });
+      };
+      try {
+        EXIF.getData(imgEl, function () { finish(EXIF.getAllTags(this)); });
+        setTimeout(function () { finish({}); }, 4000);
+      } catch (err) {
+        finish({});
+      }
+    });
+  }
+
+  // 型号归一化：trim + 压缩空格；命中品牌表则替换品牌词，未命中保留原 Model
+  function normalizeModel(make, model) {
+    const cleaned = String(model || '').replace(/\s+/g, ' ').trim();
+    let brand = '';
+    for (let i = 0; i < BRAND_RULES.length; i++) {
+      if (cleaned && BRAND_RULES[i].re.test(cleaned)) { brand = BRAND_RULES[i].brand; break; }
+    }
+    if (!brand && make) {
+      for (let i = 0; i < BRAND_RULES.length; i++) {
+        if (BRAND_RULES[i].re.test(String(make))) { brand = BRAND_RULES[i].brand; break; }
+      }
+    }
+    if (!cleaned) return brand;
+    if (!brand) return cleaned;
+
+    const rest = cleaned.replace(BRAND_PREFIX_RE, '').trim();
+    if (!rest) return brand;
+    return brand + ' ' + rest;
+  }
+
+  // 参数串固定顺序：焦距 | 光圈 | 快门 | ISO；缺项跳过，全缺返回空串
+  function buildParamString(tags, separator) {
+    const sep = separator === null || separator === undefined ? DEFAULT_SEPARATOR : separator;
+    const parts = [];
+    const t = tags || {};
+
+    let focal = toFinite(t.FocalLengthIn35mmFilm);
+    if (focal === null || focal <= 0) focal = toFinite(t.FocalLength);
+    if (focal !== null && focal > 0) parts.push(Math.round(focal) + 'mm');
+
+    // ApertureValue 是 APEX 值，换算 f = 2^(Av/2)
+    let fNumber = toFinite(t.FNumber);
+    if (fNumber === null) {
+      const apEx = toFinite(t.ApertureValue);
+      if (apEx !== null) fNumber = Math.pow(2, apEx / 2);
+    }
+    if (fNumber !== null && fNumber > 0) parts.push('f/' + fNumber.toFixed(1));
+
+    const exposure = toFinite(t.ExposureTime);
+    if (exposure !== null && exposure > 0) {
+      if (exposure < 1) {
+        const denom = Math.round(1 / exposure);
+        if (denom > 0) parts.push('1/' + denom + 's');
+      } else {
+        parts.push((Math.round(exposure * 10) / 10) + 's');
+      }
+    }
+
+    let iso = t.ISOSpeedRatings;
+    if (Array.isArray(iso)) iso = iso[0];
+    if (iso === null || iso === undefined) iso = t.PhotographicSensitivity;
+    iso = toFinite(iso);
+    if (iso !== null && iso > 0) parts.push('ISO ' + Math.round(iso));
+
+    return parts.join(sep);
+  }
+
+  function parseExifDate(tags) {
+    const t = tags || {};
+    const raw = t.DateTimeOriginal || t.DateTimeDigitized || t.DateTime;
+    if (!raw || typeof raw !== 'string') return { date: '', time: '' };
+    const full = raw.match(/^(\d{4})[:\-](\d{2})[:\-](\d{2})[ T](\d{2}):(\d{2})/);
+    if (full) return { date: full[1] + '-' + full[2] + '-' + full[3], time: full[4] + ':' + full[5] };
+    const onlyDate = raw.match(/^(\d{4})[:\-](\d{2})[:\-](\d{2})/);
+    if (onlyDate) return { date: onlyDate[1] + '-' + onlyDate[2] + '-' + onlyDate[3], time: '' };
+    return { date: '', time: '' };
+  }
+
+  /* ============================== 水印绘制 ============================== */
+
+  // 统一尺寸基准：W = 导出宽度，scale(v) = v * W / 3000
+  function scale(v, W) { return v * W / 3000; }
+
+  function trackedWidth(ctx, text, spacing) {
+    const chars = Array.from(String(text));
+    let width = 0;
+    for (let i = 0; i < chars.length; i++) {
+      width += ctx.measureText(chars[i]).width;
+      if (i < chars.length - 1) width += spacing;
+    }
+    return width;
+  }
+
+  function drawTracked(ctx, text, x, baseline, spacing, color) {
+    const chars = Array.from(String(text));
+    ctx.fillStyle = color;
+    let cursor = x;
+    for (let i = 0; i < chars.length; i++) {
+      ctx.fillText(chars[i], cursor, baseline);
+      cursor += ctx.measureText(chars[i]).width;
+      if (i < chars.length - 1) cursor += spacing;
+    }
+  }
+
+  function drawBar(ctx, x, top, height, width, color) {
+    const r = Math.min(width / 2, height / 2);
+    ctx.fillStyle = color;
+    if (typeof ctx.roundRect === 'function') {
+      ctx.beginPath();
+      ctx.roundRect(x, top, width, height, r);
+      ctx.fill();
+    } else {
+      ctx.fillRect(x, top, width, height);
+    }
+  }
+
+  // 型号拆成“品牌词 + 其余型号”，复刻参考图中粗体品牌 + 常规型号的层次
+  function splitModelParts(text) {
+    const clean = String(text || '').replace(/\s+/g, ' ').trim();
+    if (!clean) return { lead: 'PHOTO', rest: '' };
+    const index = clean.indexOf(' ');
+    if (index === -1) return { lead: clean, rest: '' };
+    return { lead: clean.slice(0, index), rest: clean.slice(index + 1).trim() };
+  }
+
+  function splitParams(text, separator) {
+    if (!text) return null;
+    const sep = separator || '';
+    if (!sep.trim()) return null;
+    const parts = String(text).split(sep);
+    return parts.length > 1 ? parts : null;
+  }
+
+  // 核心合成：所有尺寸相对 W，预览与导出共用
+  function drawWatermark(canvas, img, opts, targetW) {
+    const W = Math.max(320, Math.round(Number(targetW) || 3000));
+    const o = opts || {};
+    const fontScale = clamp(Number(o.fontScale) || 1, 0.4, 2);
+
+    // —— 参考图实测比例（3449px 宽基准）——
+    const pad = scale(214.3, W);          // 0.07143W 四边留白
+    const gapImageText = scale(377, W);   // 0.1257W 图片 → 型号字顶
+    const gapLine = scale(108.6, W);      // 0.0362W 型号字底 → 参数字顶
+    const gapDate = scale(72, W);
+    const bottomPad = scale(382.8, W);    // 0.1276W 底部留白
+
+    const innerW = W - pad * 2;
+    const bgColor = o.bgColor || DEFAULT_BG_COLOR;
+    const textColor = o.textColor || DEFAULT_TEXT_COLOR;
+    const alignCenter = o.align !== 'left';
+
+    // 参考图：主行纯黑；参数行 #999，分隔符 #C0C0C0
+    const paramsColor = mixColor(textColor, bgColor, 0.571);
+    const sepColor = mixColor(textColor, bgColor, 0.735);
+    const dateColor = mixColor(textColor, bgColor, 0.571);
+
+    const natW = img.naturalWidth || img.width || 1;
+    const natH = img.naturalHeight || img.height || 1;
+    const drawW = innerW;
+    const drawH = innerW * (natH / natW);
+
+    const modelRaw = String(o.model || '').replace(/\s+/g, ' ').trim() || 'PHOTO';
+    const brandText = String(o.brand || '').replace(/\s+/g, ' ').trim();
+    const paramsRaw = String(o.params || '').replace(/\s+/g, ' ').trim();
+    const dateText = o.showDate ? String(o.dateText || '').replace(/\s+/g, ' ').trim() : '';
+    const separator = o.separator === null || o.separator === undefined ? DEFAULT_SEPARATOR : o.separator;
+    const modelParts = splitModelParts(modelRaw);
+
+    // 参考图字号：型号 0.0397W（字高约 0.028W），参数 0.0292W，时间 0.021W
+    let fs1 = scale(119.1, W) * fontScale;
+    let fs2 = scale(87.6, W) * fontScale;
+    let fs3 = scale(63, W) * fontScale;
+
+    function measureLine1() {
+      const ls = fs1 * 0.02;
+      measureCtx.font = fontString(700, fs1);
+      const leadW = trackedWidth(measureCtx, modelParts.lead, ls);
+      let restW = 0;
+      if (modelParts.rest) {
+        measureCtx.font = fontString(400, fs1);
+        restW = trackedWidth(measureCtx, modelParts.rest, ls);
+      }
+      const gapWord = modelParts.rest ? fs1 * 0.32 : 0;
+      let brandW = 0;
+      let brandExtra = 0;
+      if (brandText) {
+        measureCtx.font = fontString(300, fs1);
+        brandW = trackedWidth(measureCtx, brandText, fs1 * 0.10);
+        brandExtra = fs1 * 0.44 + fs1 * 0.073 + fs1 * 0.44;
+      }
+      return { leadW: leadW, restW: restW, gapWord: gapWord, brandW: brandW, brandExtra: brandExtra, width: leadW + gapWord + restW + brandExtra + brandW };
+    }
+
+    let line1 = measureLine1();
+    if (line1.width > innerW) {
+      fs1 *= Math.max(0.45, (innerW / line1.width) * 0.985);
+      line1 = measureLine1();
+    }
+
+    function measureParams() {
+      if (!paramsRaw) return null;
+      const parts = splitParams(paramsRaw, separator);
+      measureCtx.font = fontString(400, fs2);
+      if (!parts) {
+        return { parts: null, widths: null, gap: 0, width: measureCtx.measureText(paramsRaw).width };
+      }
+      const widths = parts.map(function (p) { return measureCtx.measureText(p).width; });
+      const gap = fs2 * 1.55;
+      let width = gap * (parts.length - 1);
+      for (let i = 0; i < widths.length; i++) width += widths[i];
+      return { parts: parts, widths: widths, gap: gap, width: width };
+    }
+
+    let paramsLayout = measureParams();
+    if (paramsLayout && paramsLayout.width > innerW) {
+      fs2 *= Math.max(0.45, (innerW / paramsLayout.width) * 0.985);
+      paramsLayout = measureParams();
+    }
+
+    let dateWidth = 0;
+    if (dateText) {
+      measureCtx.font = fontString(400, fs3);
+      dateWidth = trackedWidth(measureCtx, dateText, fs3 * 0.02);
+      if (dateWidth > innerW) {
+        fs3 *= Math.max(0.45, (innerW / dateWidth) * 0.985);
+        measureCtx.font = fontString(400, fs3);
+        dateWidth = trackedWidth(measureCtx, dateText, fs3 * 0.02);
+      }
+    }
+
+    // 垂直布局按参考图墨迹间距定位
+    const base1 = pad + drawH + gapImageText + CAP_ASCENT * fs1;
+    let base2 = null;
+    if (paramsLayout) base2 = base1 + gapLine + CAP_ASCENT * fs2;
+    const lastLineBase = base2 !== null ? base2 : base1;
+    let base3 = null;
+    if (dateText) base3 = lastLineBase + gapDate + CAP_ASCENT * fs3;
+    const H = Math.ceil((base3 !== null ? base3 : lastLineBase) + bottomPad);
+
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext('2d');
+
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, W, H);
+    ctx.imageSmoothingEnabled = true;
+    if ('imageSmoothingQuality' in ctx) ctx.imageSmoothingQuality = 'high';
+
+    // 照片阴影：以白色矩形投出柔和阴影，再覆盖原图；可随时关闭回到纯平铺
+    ctx.save();
+    if (o.photoShadow) {
+      ctx.shadowColor = 'rgba(24, 24, 24, 0.20)';
+      ctx.shadowBlur = scale(22, W);
+      ctx.shadowOffsetY = scale(6, W);
+    }
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(pad, pad, drawW, drawH);
+    ctx.restore();
+
+    ctx.drawImage(img, pad, pad, drawW, drawH);
+    ctx.textBaseline = 'alphabetic';
+
+    // —— 第一行：品牌词(700) + 型号(400) | 品牌字样(300) ——
+    let x = alignCenter ? Math.max(0, (W - line1.width) / 2) : pad;
+    const lsModel = fs1 * 0.02;
+
+    ctx.font = fontString(700, fs1);
+    drawTracked(ctx, modelParts.lead, x, base1, lsModel, textColor);
+    x += line1.leadW;
+
+    if (modelParts.rest) {
+      x += line1.gapWord;
+      ctx.font = fontString(400, fs1);
+      drawTracked(ctx, modelParts.rest, x, base1, lsModel, textColor);
+      x += line1.restW;
+    }
+
+    if (brandText) {
+      x += fs1 * 0.44;
+      drawBar(ctx, x, base1 - fs1 * 0.76, fs1 * 0.80, fs1 * 0.073, textColor);
+      x += fs1 * 0.073 + fs1 * 0.44;
+      ctx.font = fontString(300, fs1);
+      drawTracked(ctx, brandText, x, base1, fs1 * 0.10, textColor);
+    }
+
+    // —— 第二行：参数串（#999，分隔符更浅，间距按参考图加宽）——
+    if (paramsLayout) {
+      const startX = alignCenter ? Math.max(0, (W - paramsLayout.width) / 2) : pad;
+      let px = startX;
+
+      if (paramsLayout.parts) {
+        const parts = paramsLayout.parts;
+        const widths = paramsLayout.widths;
+        const gap = paramsLayout.gap;
+        const sepGlyph = separator.trim();
+
+        for (let i = 0; i < parts.length; i++) {
+          ctx.font = fontString(400, fs2);
+          ctx.fillStyle = paramsColor;
+          ctx.fillText(parts[i], px, base2);
+          px += widths[i];
+
+          if (i < parts.length - 1) {
+            if (sepGlyph === '|') {
+              const barW = fs2 * 0.04;
+              drawBar(ctx, px + gap / 2 - barW / 2, base2 - fs2 * 0.73, fs2 * 0.73, barW, sepColor);
+            } else if (sepGlyph) {
+              ctx.font = fontString(300, fs2);
+              const tw = ctx.measureText(sepGlyph).width;
+              ctx.fillStyle = sepColor;
+              ctx.fillText(sepGlyph, px + (gap - tw) / 2, base2);
+            }
+            px += gap;
+          }
+        }
+      } else {
+        ctx.font = fontString(400, fs2);
+        ctx.fillStyle = paramsColor;
+        ctx.fillText(paramsRaw, startX, base2);
+      }
+    }
+
+    // —— 第三行：可选的拍摄时间 ——
+    if (dateText) {
+      const dx = alignCenter ? Math.max(0, (W - dateWidth) / 2) : pad;
+      ctx.font = fontString(400, fs3);
+      drawTracked(ctx, dateText, dx, base3, fs3 * 0.02, dateColor);
+    }
+
+    return { width: W, height: H };
+  }
+
+  /* ============================== 表单 / 选项 ============================== */
+
+  function getActive() {
+    for (let i = 0; i < state.entries.length; i++) {
+      if (state.entries[i].id === state.activeId) return state.entries[i];
+    }
+    return null;
+  }
+
+  function getOptions(entry) {
+    const showDate = els.dateToggle.checked;
+    let dateText = '';
+    if (showDate) {
+      const override = entry.dateOverride;
+      const baseDate = override || entry.autoDate || state.globalDate;
+      const withTime = !override && entry.autoDate && entry.autoTime;
+      dateText = formatDateText(baseDate) + (withTime ? ' ' + entry.autoTime : '');
+    }
+
+    return {
+      model: entry.overrideModel !== null ? entry.overrideModel : entry.autoModel,
+      brand: els.brandInput.value,
+      params: entry.overrideParams !== null ? entry.overrideParams : entry.autoParams,
+      showDate: showDate,
+      dateText: dateText,
+      photoShadow: els.photoShadow.checked,
+      fontScale: Number(els.fontScale.value),
+      textColor: els.textColor.value,
+      bgColor: els.bgColor.value,
+      separator: els.separator.value,
+      align: state.align,
+      exportWidth: parseInt(els.exportWidth.value, 10) || 3000
+    };
+  }
+
+  function syncForm() {
+    const entry = getActive();
+    if (entry) {
+      els.modelInput.value = entry.overrideModel !== null ? entry.overrideModel : entry.autoModel;
+      els.paramsInput.value = entry.overrideParams !== null ? entry.overrideParams : entry.autoParams;
+      els.dateInput.value = entry.dateOverride || entry.autoDate || state.globalDate;
+    } else {
+      els.modelInput.value = '';
+      els.paramsInput.value = '';
+      els.dateInput.value = state.globalDate;
+    }
+    els.modelInput.disabled = !entry;
+    els.paramsInput.disabled = !entry;
+    els.reparseBtn.disabled = !entry || !window.EXIF;
+    els.dateInput.disabled = !els.dateToggle.checked || !entry;
+    updateControlLabels();
+    updateButtons();
+  }
+
+  function updateControlLabels() {
+    els.scaleValue.textContent = Number(els.fontScale.value).toFixed(2) + '×';
+    els.textColorHex.textContent = els.textColor.value.toUpperCase();
+    els.bgColorHex.textContent = els.bgColor.value.toUpperCase();
+  }
+
+  function updateButtons() {
+    const has = !!getActive();
+    els.exportBtn.disabled = !has || state.exporting;
+    els.exportAllBtn.disabled = state.entries.length === 0 || state.exporting;
+    els.exportBtn.innerHTML = state.exporting
+      ? '导出中…'
+      : '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M12 15l-4-4M12 15l4-4"></path><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"></path></svg> 导出当前图片';
+    els.exportAllBtn.innerHTML = state.exporting
+      ? '导出中…'
+      : '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"></rect><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"></path></svg> 全部导出';
+  }
+
+  function setAlign(align) {
+    state.align = align === 'left' ? 'left' : 'center';
+    const buttons = els.alignSeg.querySelectorAll('.seg-btn');
+    for (let i = 0; i < buttons.length; i++) {
+      buttons[i].classList.toggle('active', buttons[i].dataset.align === state.align);
+    }
+  }
+
+  /* ============================== 预览 ============================== */
+
+  function scheduleRender() {
+    clearTimeout(renderTimer);
+    renderTimer = setTimeout(function () { renderTimer = 0; renderNow(); }, 120);
+  }
+
+  function renderNow() {
+    const entry = getActive();
+    const has = !!entry;
+    els.previewCanvas.hidden = !has;
+    els.emptyState.hidden = has;
+    els.previewMeta.textContent = '';
+    if (!has) return;
+
+    const opts = getOptions(entry);
+    const targetW = clamp(opts.exportWidth, 1600, 2000);
+    let info;
+    try {
+      info = drawWatermark(els.previewCanvas, entry.img, opts, targetW);
+    } catch (err) {
+      console.error(err);
+      toast('预览渲染失败：' + (err && err.message ? err.message : '未知错误'));
+      return;
+    }
+
+    const outH = Math.round(info.height * opts.exportWidth / info.width);
+    const natW = entry.img.naturalWidth || entry.img.width;
+    const natH = entry.img.naturalHeight || entry.img.height;
+    els.previewMeta.textContent = natW + ' × ' + natH + ' · 输出 ' + opts.exportWidth + ' × ' + outH;
+  }
+
+  /* ============================== 上传 ============================== */
+
+  function loadImageElement(url) {
+    return new Promise(function (resolve, reject) {
+      const img = new Image();
+      img.onload = function () { resolve(img); };
+      img.onerror = function () { reject(new Error('图片解码失败')); };
+      img.src = url;
+    });
+  }
+
+  async function addFiles(fileList) {
+    const list = Array.from(fileList || []);
+    if (!list.length) return;
+
+    const images = list.filter(function (file) {
+      return /^image\//i.test(file.type) || /\.(jpe?g|png|webp|gif|bmp)$/i.test(file.name);
+    });
+
+    if (!images.length) { toast('未识别到图片文件'); return; }
+
+    let lastId = null;
+    for (let i = 0; i < images.length; i++) {
+      const file = images[i];
+      const url = URL.createObjectURL(file);
+      try {
+        const img = await loadImageElement(url);
+        const parsed = await parseExif(file, img);
+        const tags = parsed.tags || {};
+        const dateParts = parseExifDate(tags);
+        const entry = {
+          id: 'img-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7),
+          file: file,
+          url: url,
+          img: img,
+          tags: tags,
+          exifOk: !!parsed.ok,
+          autoModel: normalizeModel(tags.Make, tags.Model),
+          autoParams: buildParamString(tags, els.separator.value),
+          autoDate: dateParts.date,
+          autoTime: dateParts.time,
+          overrideModel: null,
+          overrideParams: null,
+          dateOverride: null
+        };
+        state.entries.push(entry);
+        lastId = entry.id;
+      } catch (err) {
+        URL.revokeObjectURL(url);
+        toast('无法读取「' + file.name + '」，可能格式不受支持');
+      }
+    }
+
+    if (lastId) state.activeId = lastId;
+    renderThumbs();
+    syncForm();
+    renderNow();
+
+    if (images.length < list.length) {
+      toast('已跳过 ' + (list.length - images.length) + ' 个非图片文件');
+    }
+  }
+
+  function renderThumbs() {
+    els.thumbs.innerHTML = '';
+    els.thumbs.hidden = state.entries.length === 0;
+    els.photoCount.textContent = state.entries.length ? state.entries.length + ' 张' : '未选择';
+
+    state.entries.forEach(function (entry, index) {
+      const item = document.createElement('div');
+      item.className = 'thumb' + (entry.id === state.activeId ? ' active' : '');
+      item.tabIndex = 0;
+      item.setAttribute('role', 'button');
+      item.title = entry.file.name;
+      item.setAttribute('aria-label', '切换到第 ' + (index + 1) + ' 张：' + entry.file.name);
+
+      const img = document.createElement('img');
+      img.alt = '';
+      img.src = entry.url;
+      item.appendChild(img);
+
+      const badge = document.createElement('span');
+      badge.className = 'thumb-idx';
+      badge.textContent = String(index + 1);
+      item.appendChild(badge);
+
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'thumb-remove';
+      removeBtn.title = '移除这张';
+      removeBtn.setAttribute('aria-label', '移除第 ' + (index + 1) + ' 张');
+      removeBtn.textContent = '×';
+      removeBtn.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        removeEntry(entry.id);
+      });
+      item.appendChild(removeBtn);
+
+      const activate = function () {
+        state.activeId = entry.id;
+        renderThumbs();
+        syncForm();
+        renderNow();
+      };
+      item.addEventListener('click', activate);
+      item.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter' || ev.key === ' ') {
+          ev.preventDefault();
+          activate();
+        }
+      });
+
+      els.thumbs.appendChild(item);
+    });
+  }
+
+  function removeEntry(id) {
+    const index = state.entries.findIndex(function (entry) { return entry.id === id; });
+    if (index < 0) return;
+    URL.revokeObjectURL(state.entries[index].url);
+    state.entries.splice(index, 1);
+
+    if (state.activeId === id) {
+      state.activeId = state.entries.length
+        ? state.entries[Math.min(index, state.entries.length - 1)].id
+        : null;
+    }
+    renderThumbs();
+    syncForm();
+    renderNow();
+  }
+
+  /* ============================== 导出 ============================== */
+
+  function canvasToBlob(canvas, type, quality) {
+    return new Promise(function (resolve, reject) {
+      if (typeof canvas.toBlob === 'function') {
+        canvas.toBlob(function (blob) {
+          if (blob) resolve(blob);
+          else reject(new Error('画布导出失败'));
+        }, type || 'image/png', quality);
+        return;
+      }
+      try {
+        const dataUrl = canvas.toDataURL(type || 'image/png', quality);
+        const binary = atob(dataUrl.split(',')[1]);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        resolve(new Blob([bytes], { type: type || 'image/png' }));
+      } catch (err) {
+        reject(err);
+      }
+    });
+  }
+
+  function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
+  }
+
+  function buildFileName(entry, ext) {
+    const base = entry.file.name.replace(/\.[^.]+$/, '');
+    return base + '_watermark_' + Date.now() + '.' + (ext || 'png');
+  }
+
+  function getExportFormat() {
+    return EXPORT_FORMATS[els.exportFormat.value] || EXPORT_FORMATS.jpeg;
+  }
+
+  function formatSize(bytes) {
+    if (!bytes) return '';
+    if (bytes < 1024 * 1024) return Math.max(1, Math.round(bytes / 1024)) + ' KB';
+    return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+  }
+
+  async function exportImage(entry, opts) {
+    await fontsPromise;
+    const format = getExportFormat();
+    const canvas = document.createElement('canvas');
+    drawWatermark(canvas, entry.img, opts, opts.exportWidth);
+
+    let blob;
+    let ext = format.ext;
+    try {
+      blob = await canvasToBlob(canvas, format.mime, format.quality);
+    } catch (err) {
+      // 个别浏览器不支持目标格式时回退 PNG，保证导出不失败
+      blob = await canvasToBlob(canvas, 'image/png');
+      ext = 'png';
+    }
+    if (blob.type === 'image/png') ext = 'png';
+    downloadBlob(blob, buildFileName(entry, ext));
+    return { blob: blob, ext: ext, label: ext === 'png' ? 'PNG' : 'JPG' };
+  }
+
+  async function exportCurrent() {
+    if (state.exporting) return;
+    const entry = getActive();
+    if (!entry) return;
+
+    state.exporting = true;
+    updateButtons();
+    try {
+      const opts = getOptions(entry);
+      const result = await exportImage(entry, opts);
+      toast('已导出 ' + opts.exportWidth + 'px ' + result.label + ' · ' + formatSize(result.blob.size));
+    } catch (err) {
+      toast('导出失败：' + (err && err.message ? err.message : '未知错误'));
+    } finally {
+      state.exporting = false;
+      updateButtons();
+    }
+  }
+
+  async function exportAll() {
+    if (state.exporting || !state.entries.length) return;
+
+    state.exporting = true;
+    updateButtons();
+    const list = state.entries.slice();
+    const total = list.length;
+    let success = 0;
+    let totalBytes = 0;
+    let formatLabel = getExportFormat().label;
+
+    for (let i = 0; i < total; i++) {
+      const entry = list[i];
+      els.exportAllBtn.textContent = '导出中 ' + (i + 1) + '/' + total;
+      try {
+        const result = await exportImage(entry, getOptions(entry));
+        success++;
+        totalBytes += result.blob.size;
+        formatLabel = result.label;
+      } catch (err) {
+        console.error(err);
+      }
+      if (i < total - 1) await sleep(300);
+    }
+
+    state.exporting = false;
+    updateButtons();
+    toast(success === total
+      ? '已导出全部 ' + total + ' 张 ' + formatLabel + ' · ' + formatSize(totalBytes)
+      : '已导出 ' + success + '/' + total + ' 张，' + (total - success) + ' 张失败');
+  }
+
+  /* ============================== 事件 ============================== */
+
+  function bindEvents() {
+    els.dropzone.addEventListener('click', function () { els.fileInput.click(); });
+    els.dropzone.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Enter' || ev.key === ' ') {
+        ev.preventDefault();
+        els.fileInput.click();
+      }
+    });
+
+    els.fileInput.addEventListener('change', function () {
+      const files = Array.from(els.fileInput.files || []);
+      els.fileInput.value = '';
+      if (files.length) addFiles(files);
+    });
+
+    if (els.emptyPick) {
+      els.emptyPick.addEventListener('click', function () { els.fileInput.click(); });
+    }
+
+    ['dragenter', 'dragover'].forEach(function (type) {
+      els.dropzone.addEventListener(type, function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        els.dropzone.classList.add('dragover');
+      });
+    });
+    ['dragleave', 'dragend'].forEach(function (type) {
+      els.dropzone.addEventListener(type, function () { els.dropzone.classList.remove('dragover'); });
+    });
+    els.dropzone.addEventListener('drop', function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      els.dropzone.classList.remove('dragover');
+      const files = Array.from((ev.dataTransfer && ev.dataTransfer.files) || []);
+      if (files.length) addFiles(files);
+    });
+    window.addEventListener('dragover', function (ev) { ev.preventDefault(); });
+    window.addEventListener('drop', function (ev) { ev.preventDefault(); });
+
+    els.modelInput.addEventListener('input', function () {
+      const entry = getActive();
+      if (entry) entry.overrideModel = els.modelInput.value;
+      scheduleRender();
+    });
+
+    els.brandInput.addEventListener('input', scheduleRender);
+
+    els.paramsInput.addEventListener('input', function () {
+      const entry = getActive();
+      if (entry) entry.overrideParams = els.paramsInput.value;
+      scheduleRender();
+    });
+
+    els.reparseBtn.addEventListener('click', reparseCurrent);
+
+    els.photoShadow.addEventListener('change', scheduleRender);
+
+    els.dateToggle.addEventListener('change', function () {
+      els.dateInput.disabled = !els.dateToggle.checked || !getActive();
+      scheduleRender();
+    });
+
+    els.dateInput.addEventListener('change', function () {
+      if (els.dateInput.value) state.globalDate = els.dateInput.value;
+      const entry = getActive();
+      if (entry) entry.dateOverride = els.dateInput.value;
+      scheduleRender();
+    });
+
+    els.fontScale.addEventListener('input', function () {
+      updateControlLabels();
+      scheduleRender();
+    });
+
+    els.textColor.addEventListener('input', function () {
+      updateControlLabels();
+      scheduleRender();
+    });
+
+    els.bgColor.addEventListener('input', function () {
+      updateControlLabels();
+      scheduleRender();
+    });
+
+    els.separator.addEventListener('change', function () {
+      state.entries.forEach(function (entry) {
+        entry.autoParams = buildParamString(entry.tags, els.separator.value);
+      });
+      const entry = getActive();
+      if (entry && entry.overrideParams === null) els.paramsInput.value = entry.autoParams;
+      scheduleRender();
+    });
+
+    els.alignSeg.addEventListener('click', function (ev) {
+      const btn = ev.target.closest('button[data-align]');
+      if (!btn) return;
+      setAlign(btn.dataset.align);
+      scheduleRender();
+    });
+
+    els.exportWidth.addEventListener('change', scheduleRender);
+    els.resetBtn.addEventListener('click', resetSettings);
+    els.exportBtn.addEventListener('click', exportCurrent);
+    els.exportAllBtn.addEventListener('click', exportAll);
+
+    const retryBtn = $('retryExif');
+    if (retryBtn) retryBtn.addEventListener('click', retryExifLoad);
+  }
+
+  async function reparseCurrent() {
+    const entry = getActive();
+    if (!entry) return;
+    if (!window.EXIF) { toast('EXIF 库未加载，无法重新读取'); return; }
+
+    const parsed = await parseExif(entry.file, entry.img);
+    const tags = parsed.tags || {};
+    const dateParts = parseExifDate(tags);
+
+    entry.tags = tags;
+    entry.exifOk = !!parsed.ok;
+    entry.autoModel = normalizeModel(tags.Make, tags.Model);
+    entry.autoParams = buildParamString(tags, els.separator.value);
+    entry.autoDate = dateParts.date;
+    entry.autoTime = dateParts.time;
+    entry.overrideModel = null;
+    entry.overrideParams = null;
+    entry.dateOverride = null;
+
+    syncForm();
+    renderNow();
+    toast(parsed.ok ? '已重新读取 EXIF' : '这张图片没有 EXIF 信息');
+  }
+
+  function resetSettings() {
+    els.brandInput.value = 'LEICA';
+    els.fontScale.value = '1';
+    els.textColor.value = '#111111';
+    els.bgColor.value = '#FFFFFF';
+    els.separator.value = DEFAULT_SEPARATOR;
+    els.exportFormat.value = 'jpeg';
+    els.exportWidth.value = '3000';
+    els.dateToggle.checked = false;
+    els.dateInput.disabled = true;
+    els.photoShadow.checked = true;
+    setAlign('center');
+
+    state.entries.forEach(function (entry) {
+      entry.overrideModel = null;
+      entry.overrideParams = null;
+      entry.dateOverride = null;
+      entry.autoParams = buildParamString(entry.tags, els.separator.value);
+    });
+
+    updateControlLabels();
+    syncForm();
+    renderNow();
+  }
+
+  function retryExifLoad() {
+    if (window.EXIF) { els.cdnWarn.hidden = true; return; }
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/exif-js@2.3.0/exif.min.js';
+    script.onload = function () {
+      els.cdnWarn.hidden = true;
+      syncForm();
+      toast('EXIF 库已加载');
+    };
+    script.onerror = function () { toast('仍然无法加载 EXIF 库，请检查网络'); };
+    document.head.appendChild(script);
+  }
+
+  /* ============================== 字体 / 初始化 ============================== */
+
+  // 本地 Outfit 可变字体就绪后再重绘一次，避免先用回退字体
+  function loadWatermarkFonts() {
+    if (!document.fonts || !document.fonts.load) return Promise.resolve();
+    const samples = [
+      '300 120px Outfit',
+      '400 120px Outfit',
+      '600 120px Outfit',
+      '700 120px Outfit'
+    ];
+    return Promise.all(samples.map(function (sample) {
+      return document.fonts.load(sample).catch(function () { return null; });
+    })).then(function () {
+      return document.fonts.ready;
+    }).catch(function () { return null; });
+  }
+
+  const els = {
+    dropzone: $('dropzone'),
+    fileInput: $('fileInput'),
+    thumbs: $('thumbs'),
+    photoCount: $('photoCount'),
+    cdnWarn: $('cdnWarn'),
+    modelInput: $('modelInput'),
+    brandInput: $('brandInput'),
+    paramsInput: $('paramsInput'),
+    reparseBtn: $('reparseBtn'),
+    dateToggle: $('dateToggle'),
+    dateInput: $('dateInput'),
+    photoShadow: $('photoShadow'),
+    fontScale: $('fontScale'),
+    scaleValue: $('scaleValue'),
+    textColor: $('textColor'),
+    textColorHex: $('textColorHex'),
+    bgColor: $('bgColor'),
+    bgColorHex: $('bgColorHex'),
+    separator: $('separator'),
+    alignSeg: $('alignSeg'),
+    exportFormat: $('exportFormat'),
+    exportWidth: $('exportWidth'),
+    exportBtn: $('exportBtn'),
+    exportAllBtn: $('exportAllBtn'),
+    resetBtn: $('resetBtn'),
+    previewCanvas: $('previewCanvas'),
+    previewMeta: $('previewMeta'),
+    emptyState: $('emptyState'),
+    emptyPick: $('emptyPick'),
+    toast: $('toast')
+  };
+
+  function init() {
+    bindEvents();
+    if (!window.EXIF) els.cdnWarn.hidden = false;
+
+    updateControlLabels();
+    syncForm();
+    renderNow();
+
+    fontsPromise = loadWatermarkFonts().then(function () {
+      if (state.entries.length) renderNow();
+    });
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
